@@ -6,18 +6,12 @@ module conv_calc #(parameter FILTER_SIZE = 5, DATA_BITS = 8,CHANNEL_LEN = 3)(
     input  [FILTER_SIZE * FILTER_SIZE * DATA_BITS*CHANNEL_LEN - 1:0] weight,    
     input  [CHANNEL_LEN * DATA_BITS - 1:0]bias,
     output signed [CHANNEL_LEN*(DATA_BITS+FILTER_SIZE)-1:0] data_out,
-    output valid;
+    output valid
  );
 
 parameter N = FILTER_SIZE * FILTER_SIZE; // 25
 parameter PROD_WIDTH = 2 * DATA_BITS + 1; // 17
 parameter SUM_WIDTH = PROD_WIDTH + $clog2(N); // 22
-
-//  reg signed [DATA_BITS - 1:0] weight_1 [0:FILTER_SIZE * FILTER_SIZE - 1];
-//  reg signed [DATA_BITS - 1:0] weight_2 [0:FILTER_SIZE * FILTER_SIZE - 1];
-//  reg signed [DATA_BITS - 1:0] weight_3 [0:FILTER_SIZE * FILTER_SIZE - 1];
-//  reg signed [DATA_BITS - 1:0] bias [0:CHANNEL_LEN - 1];
-//  wire signed [19:0] calc_out_1, calc_out_2, calc_out_3;
 
 wire signed [CHANNEL_LEN * SUM_WIDTH - 1 : 0] calc_out;
 wire signed [DATA_BITS+FILTER_SIZE-1:0] exp_bias [0:CHANNEL_LEN - 1];
@@ -51,7 +45,7 @@ generate
         end
     end
 endgenerate
-
+// wire [SUM_WIDTH - 1:0]test_cal_out[0:CHANNEL_LEN-1];
 genvar k;
 generate
     for (k = 0; k < CHANNEL_LEN; k = k + 1) begin : compute_conv
@@ -71,13 +65,13 @@ generate
         assign calc_out[k * SUM_WIDTH +: SUM_WIDTH] = sum_prod[FILTER_SIZE * FILTER_SIZE - 1];
     end
 endgenerate
-
+wire [DATA_BITS+FILTER_SIZE:0]conv_for_test[0:CHANNEL_LEN-1];
 genvar e;
 generate
-    for (e = 0; e < CHANNEL_LEN; e = e + 1) begin : gen_exp_bias
+    for (e = 0; e < CHANNEL_LEN; e = e + 1) begin : result_out
         assign exp_bias[e] = $signed(bias[e* DATA_BITS+:DATA_BITS]);
         assign data_out[e*(DATA_BITS+FILTER_SIZE)+:DATA_BITS+FILTER_SIZE] = calc_out[e*SUM_WIDTH+:SUM_WIDTH] + exp_bias[e];
-
+        assign conv_for_test[e] = calc_out[e*SUM_WIDTH+:SUM_WIDTH] + exp_bias[e];
     end
 endgenerate
 
