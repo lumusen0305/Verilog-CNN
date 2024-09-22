@@ -12,19 +12,46 @@ reg valid,valid_o;
   reg signed [DATA_BITS - 1:0] l1_weight_1 [0:FILTER_SIZE * FILTER_SIZE - 1];
   reg signed [DATA_BITS - 1:0] l1_weight_2 [0:FILTER_SIZE * FILTER_SIZE - 1];
   reg signed [DATA_BITS - 1:0] l1_weight_3 [0:FILTER_SIZE * FILTER_SIZE - 1];
+
+  reg signed [DATA_BITS - 1:0] l2_weight_c1_1 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c1_2 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c1_3 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c2_1 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c2_2 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c2_3 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c3_1 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c3_2 [0:FILTER_SIZE * FILTER_SIZE - 1];
+  reg signed [DATA_BITS - 1:0] l2_weight_c3_3 [0:FILTER_SIZE * FILTER_SIZE - 1];
+
   reg signed [DATA_BITS - 1:0] l1_bias [0:CHANNEL_LEN - 1];
+
+  reg signed [DATA_BITS - 1:0] l2_bias [0:CHANNEL_LEN - 1];
   
  initial begin
    $readmemh("./parameter/conv1_weight_1.txt", l1_weight_1);
    $readmemh("./parameter/conv1_weight_2.txt", l1_weight_2);
    $readmemh("./parameter/conv1_weight_3.txt", l1_weight_3);
+
+   $readmemh("./parameter/conv2_weight_11.txt", l2_weight_c1_1);
+   $readmemh("./parameter/conv2_weight_12.txt", l2_weight_c1_2);
+   $readmemh("./parameter/conv2_weight_13.txt", l2_weight_c1_3);
+   $readmemh("./parameter/conv2_weight_21.txt", l2_weight_c2_1);
+   $readmemh("./parameter/conv2_weight_22.txt", l2_weight_c2_2);
+   $readmemh("./parameter/conv2_weight_23.txt", l2_weight_c2_3);
+   $readmemh("./parameter/conv2_weight_31.txt", l2_weight_c3_1);
+   $readmemh("./parameter/conv2_weight_32.txt", l2_weight_c3_2);
+   $readmemh("./parameter/conv2_weight_33.txt", l2_weight_c3_3);
+
    $readmemh("./parameter/conv1_bias.txt", l1_bias);
+
+   $readmemh("./parameter/conv2_bias.txt", l2_bias);
  end
 
   // Concatenate all weights into a single wire
-  wire [FILTER_SIZE * FILTER_SIZE * DATA_BITS * CHANNEL_LEN - 1:0] l1_weight;
-  wire [CHANNEL_LEN * DATA_BITS - 1:0] l1_bias_concat;
+  wire [FILTER_SIZE * FILTER_SIZE * DATA_BITS * CHANNEL_LEN - 1:0] l1_weight,l2_c1_weight,l2_c2_weight,l2_c3_weight;
+  wire [CHANNEL_LEN * DATA_BITS - 1:0] l1_bias_concat,l2_bias_concat;
   assign l1_bias_concat = {l1_bias[2], l1_bias[1], l1_bias[0]}; // 拼接成位串
+  assign l2_bias_concat = {l2_bias[2], l2_bias[1], l2_bias[0]}; // 拼接成位串
 
   genvar i;
   generate
@@ -32,13 +59,28 @@ reg valid,valid_o;
       assign l1_weight[ i * DATA_BITS +: DATA_BITS] = l1_weight_1[i];
       assign l1_weight[(i * DATA_BITS + DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] = l1_weight_2[i];
       assign l1_weight[(i * DATA_BITS + 2 * DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] = l1_weight_3[i];
+
+      assign l2_c1_weight[ i * DATA_BITS +: DATA_BITS] =                                              l2_weight_c1_1[i];
+      assign l2_c1_weight[(i * DATA_BITS + DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] =     l2_weight_c1_2[i];
+      assign l2_c1_weight[(i * DATA_BITS + 2 * DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] = l2_weight_c1_3[i];
+      assign l2_c2_weight[ i * DATA_BITS +: DATA_BITS] =                                              l2_weight_c2_1[i];
+      assign l2_c2_weight[(i * DATA_BITS + DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] =     l2_weight_c2_2[i];
+      assign l2_c2_weight[(i * DATA_BITS + 2 * DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] = l2_weight_c2_3[i];
+      assign l2_c3_weight[ i * DATA_BITS +: DATA_BITS] =                                              l2_weight_c3_1[i];
+      assign l2_c3_weight[(i * DATA_BITS + DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] =     l2_weight_c3_2[i];
+      assign l2_c3_weight[(i * DATA_BITS + 2 * DATA_BITS * FILTER_SIZE * FILTER_SIZE) +: DATA_BITS] = l2_weight_c3_3[i];
+
     end
   endgenerate
 CNN dut(
     .clk(clk),
     .rst_n(rst_n),
     .l1_weight(l1_weight),
+    .l2_c1_weight(l2_c1_weight),
+    .l2_c2_weight(l2_c2_weight),
+    .l2_c3_weight(l2_c3_weight),
     .l1_bias(l1_bias_concat),
+    .l2_bias(l2_bias_concat),
     .in_val(valid),
     .data_in(data_in),
     .decision(),
