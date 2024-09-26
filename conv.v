@@ -5,7 +5,7 @@ module conv #(parameter WIDTH = 28, HEIGHT = 28,FILTER_SIZE = 5, DATA_BITS = 8,C
     input [DATA_BITS - 1:0] data_in,
     input  [FILTER_SIZE *FILTER_SIZE *DATA_BITS*CHANNEL_LEN - 1:0] l1_weight,    
     input  [CHANNEL_LEN *DATA_BITS - 1:0] l1_bias,
-    output [CHANNEL_LEN*(DATA_BITS+FILTER_SIZE)-1:0] data_out,
+    output [CHANNEL_LEN*(DATA_BITS)-1:0] data_out,
     output out_val
 );
 wire  [(FILTER_SIZE*FILTER_SIZE)*DATA_BITS - 1:0] data_out_b1;

@@ -67,12 +67,14 @@ else begin
         cur_state<=nxt_state;
         if(cur_state==READ) buffer[buf_idx*DATA_BITS+:DATA_BITS]<=data_in;
         else begin
+            if (in_val) begin
             windows<={data_in,windows[DATA_BITS*FILTER_SIZE-1:DATA_BITS]};
             if (buf_idx==0 && valid) begin
                 buffer<={windows,buffer[(DATA_BITS*(WIDTH-FILTER_SIZE))-1:0],buffer[DATA_BITS*WIDTH *(FILTER_SIZE-1)-1:DATA_BITS*WIDTH]};
             end
             else if(buf_idx>(FILTER_SIZE-1))begin
                 buffer[(buf_idx - FILTER_SIZE) * DATA_BITS +: DATA_BITS]<=windows[DATA_BITS-1:0];
+            end
             end
         end
 end
@@ -142,6 +144,8 @@ wire [DATA_BITS - 1:0] data_out_array [0:FILTER_SIZE*FILTER_SIZE-1];
 wire  [DATA_BITS*WIDTH -1:0] buffer_list[(FILTER_SIZE-2):0];
 
 genvar b;
+reg flag,flag_r;
+
 generate
     for (b = 0; b < (FILTER_SIZE-1); b = b + 1) begin : filter_b
             assign buffer_list[b] = buffer[b * DATA_BITS*WIDTH +: DATA_BITS*WIDTH];
@@ -171,16 +175,19 @@ generate
         assign data_out[(a) * DATA_BITS +: DATA_BITS] = data_out_array[a];
     end
 endgenerate
-
-
+reg stripe_cnt,stripe_cnt_r;
 always @(posedge clk or negedge rst_n) begin
 if(~rst_n) begin
         buf_idx <= 0;
+        stripe_cnt<=0;
         cur_state<=0;
         buffer<=0;
         valid<=0;
+        flag<=1;
 end
 else begin
+        stripe_cnt<=stripe_cnt_r;
+        flag<=flag_r;
         valid <= valid_r;
         buf_idx <= buf_idx_r;
         cur_state<=nxt_state;
@@ -199,6 +206,7 @@ end
 always@(*)begin
     case (cur_state)
         READ:begin
+            flag_r=1;
             valid_r=0;
             if(in_val) begin
                 if (buf_idx==WIDTH * (FILTER_SIZE-1) - 1) begin
@@ -212,25 +220,38 @@ always@(*)begin
             else begin 
                 buf_idx_r=buf_idx; 
                 nxt_state=cur_state;        
-            end    
+            end
+            stripe_cnt_r=stripe_cnt;
+
         end 
         CAL:begin
             if(in_val) begin
                 nxt_state=cur_state;
                 if (buf_idx==WIDTH -1 ) begin
-                    buf_idx_r=0;    
+                    buf_idx_r=0;
+                    flag_r=!flag;  
                 end else begin
                     buf_idx_r=buf_idx+1;
+                    flag_r=flag;
                 end
-                if (buf_idx>=FILTER_SIZE-1)valid_r=1;
-                else valid_r=0;
+                if (buf_idx>=FILTER_SIZE-1 && flag ) begin
+                    if(!stripe_cnt)valid_r=1;
+                    else valid_r=0;
+                    stripe_cnt_r=stripe_cnt+1;
+                end
+                else begin
+                    valid_r=0;
+                    stripe_cnt_r=0;
+                end
             end 
             else begin
+                flag_r=flag;
+                stripe_cnt_r=stripe_cnt;
                 buf_idx_r=buf_idx; 
                 nxt_state=cur_state;
                 valid_r=0;
             end
-        end 
+        end
     endcase
 end
 endmodule
